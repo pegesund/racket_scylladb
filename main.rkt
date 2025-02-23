@@ -22,18 +22,20 @@
 
 ; Prepare statement
 (displayln "Preparing statement...")
-(define stmt (prepare conn "SELECT * FROM users"))
+(define stmt (prepare conn "SELECT email FROM users WHERE email = ? ALLOW FILTERING"))
 
 ; Execute prepared statement
 (displayln "Querying users...")
-(define users (query conn stmt))
+(define bound-stmt (send stmt bind 'query (list "john.doe@example.com")))
+(define users (query conn bound-stmt))
 (displayln "Users:")
 (displayln users)
 
-
-(displayln (query conn "select email from users"))
+(displayln (query conn "select * from users"))
 
 ; Clean up
 (displayln "Disconnecting...")
-(send conn disconnect)
+(disconnect conn)
 (displayln "Done")
+
+

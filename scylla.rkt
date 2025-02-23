@@ -19,7 +19,9 @@
 (struct response-header (version flags streamid opcode length))
 
 (define (query connection stmt . args)
-  (send connection query 'query stmt #f))
+  (if (null? args)
+      (send connection query 'query stmt #f)
+      (send connection query 'query (send stmt bind 'query args) #f)))
 
 (define (disconnect connection)
   (send connection disconnect))
@@ -202,7 +204,7 @@
           (void)))
       (k lwac))
 
-    (define/private (query1:send who stmt cursor?)
+    (define/private (query1:send who stmt consistency cursor?)
       (let ([stmt (check-statement who stmt cursor?)])
         (define streamid (new-streamid))
         (define lwac (add-recv-lwachan streamid))
@@ -215,7 +217,7 @@
                         (msg:Execute (send pst get-handle) consistency params))]
           [(? string? stmt)
            (send-message streamid
-                        (msg:Query stmt consistency #f))])
+                        (msg:Query stmt consistency cursor?))])
         lwac))
 
     (define/private (query1:collect who msg)
@@ -230,15 +232,26 @@
               [owner this]
               [handle id]
               [close-on-exec? #t]
-              [param-typeids (map car metadata)]
+              [param-typeids (map (lambda (x) (vector-ref x 3)) metadata)]  ; Get the type from metadata vector
               [result-dvecs result-metadata])]
         [(msg:Error code msg)
          (error 'scylla-query "query error ~s: ~s" code msg)]))
 
     (define/override (query who stmt cursor?)
-      (when cursor? (error who "cursors not supported yet"))
-      (let ([lw (query1:send who stmt cursor?)])
-        (define result (lwac-ref lw))
+      (let ([stmt (check-statement who stmt cursor?)])
+        (define streamid (new-streamid))
+        (define lwac (add-recv-lwachan streamid))
+        (match stmt
+          [(? prepared-statement? pst)
+           (send-message streamid
+                        (msg:Execute (send pst get-handle) consistency null))]
+          [(struct statement-binding (pst params))
+           (send-message streamid
+                        (msg:Execute (send pst get-handle) consistency params))]
+          [(? string? stmt)
+           (send-message streamid
+                        (msg:Query stmt consistency cursor?))])
+        (define result (lwac-ref lwac))
         (query1:collect who result)))
 
     (define/override (prepare who query-text)
@@ -246,13 +259,13 @@
       (define lwac (add-recv-lwachan streamid))
       (send-message streamid (msg:Prepare query-text))
       (match (lwac-ref lwac)
-        [(msg:Result:Prepared _ id _ _)
+        [(msg:Result:Prepared _ id metadata result-metadata)
          (new prepared-statement%
               [owner this]
               [handle id]
               [close-on-exec? #t]
-              [param-typeids null]
-              [result-dvecs null])]
+              [param-typeids (map (lambda (x) (vector-ref x 3)) metadata)]  ; Get the type from metadata vector
+              [result-dvecs result-metadata])]
         [(msg:Error code msg)
          (error 'scylla-prepare "prepare error ~s: ~s" code msg)]))
 
