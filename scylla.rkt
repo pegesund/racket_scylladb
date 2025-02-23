@@ -15,14 +15,14 @@
          query
          disconnect
          prepare
-         bind-params
+         query-params
          query-result
          (struct-out query-result))
 
 (struct response-header (version flags streamid opcode length))
 (struct query-result (metadata rows) #:transparent)
 
-(define (bind-params stmt conn params)
+(define (query-params stmt conn params)
   (if conn
       (query conn (send stmt bind 'query params))
       (send stmt bind 'query params)))

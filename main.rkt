@@ -2,7 +2,7 @@
 
 (require racket/match
          racket/format
-         (only-in "./scylla.rkt" scylla-connect query disconnect prepare bind-params query-result))
+         (only-in "./scylla.rkt" scylla-connect query disconnect prepare query-params query-result))
 
 (displayln "Starting...")
 
@@ -24,7 +24,7 @@
 (displayln "Preparing statement...")
 (define stmt (prepare conn "SELECT email FROM users WHERE email = ? ALLOW FILTERING"))
 (displayln "Querying users...")
-(define result (bind-params stmt conn (list "john.doe@example.com")))
+(define result (query-params stmt conn (list "john.doe@example.com")))
 (displayln "Users:")
 (match result
   [(query-result metadata rows)
@@ -43,7 +43,7 @@
 
 (time 
     (for ([i (in-range 100000)])
-        (bind-params stmt conn (list "john.doe@example.com"))))
+        (query-params stmt conn (list "john.doe@example.com"))))
 
 ; Clean up
 (displayln "Disconnecting...")
