@@ -16,8 +16,8 @@
 ; Try a query
 (displayln "Attempting query...")
 (display "Query result: ")
-(display (query conn "SELECT * FROM system.local"))
-(displayln "")
+(display (query conn "use toldyou"))
+(displayln (query conn"select * from users"))
 
 ; Clean up
 (displayln "Disconnecting...")
