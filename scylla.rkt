@@ -77,7 +77,6 @@
                  (error 'read-response "connection closed by peer while reading body"))
                (display "Body read, part 1") (newline)
                (display "Body length: ") (display (bytes-length body-bytes)) (newline)
-               (display "Body: ") (display body-bytes) (newline)
                (define msg (call-with-input-bytes body-bytes
                            (lambda (in) (msg:read-response-body in opcode))))
                (display "Got message: ") (display msg) (newline)
