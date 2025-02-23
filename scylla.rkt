@@ -19,7 +19,7 @@
 
 (struct response-header (version flags streamid opcode length))
 
-(define (bind-params stmt conn . params)
+(define (bind-params stmt conn params)
   (if conn
       (query conn (send stmt bind 'query params))
       (send stmt bind 'query params)))

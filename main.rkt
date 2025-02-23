@@ -24,7 +24,7 @@
 (displayln "Preparing statement...")
 (define stmt (prepare conn "SELECT email FROM users WHERE email = ? ALLOW FILTERING"))
 (displayln "Querying users...")
-(define users (bind-params stmt conn "john.doe@example.com"))
+(define users (bind-params stmt conn (list "john.doe@example.com")))
 (displayln "Users:")
 (displayln users)
 
