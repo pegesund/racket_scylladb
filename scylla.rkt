@@ -14,7 +14,7 @@
 (provide scylla-connect
          query)
 
-(struct response-header (version flags streamid opcode))
+(struct response-header (version flags streamid opcode length))
 
 (define (query connection stmt . args)
   (send connection query 'query stmt #f))
@@ -70,7 +70,16 @@
                (newline)
                (define streamid (response-header-streamid header))
                (define opcode (response-header-opcode header))
-               (define msg (msg:read-response-body inport opcode))
+               (display "Reading body...") (newline)
+               (define body-bytes (read-bytes (response-header-length header) inport))
+               (when (or (eof-object? body-bytes) 
+                        (< (bytes-length body-bytes) (response-header-length header)))
+                 (error 'read-response "connection closed by peer while reading body"))
+               (display "Body read, part 1") (newline)
+               (display "Body length: ") (display (bytes-length body-bytes)) (newline)
+               (display "Body: ") (display body-bytes) (newline)
+               (define msg (call-with-input-bytes body-bytes
+                           (lambda (in) (msg:read-response-body in opcode))))
                (display "Got message: ") (display msg) (newline)
                (let ([lwac (hash-ref recv-map streamid #f)])
                  (when lwac
@@ -116,7 +125,7 @@
         (display "Got length: ") (display length) (newline)
         (define opcode (hash-ref msg:int=>opcode opcode-byte))
         (display "Got opcode: ") (display opcode) (newline)
-        (response-header version flags streamid opcode)))
+        (response-header version flags streamid opcode length)))
 
     (define/private (send-message streamid msg)
       (call-with-lock 'send-message
