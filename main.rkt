@@ -1,7 +1,8 @@
 #lang racket
 
-(require "./scylla.rkt")  ; Use our new implementation
-(require racket/format)
+(require racket/match
+         racket/format
+         (only-in "./scylla.rkt" scylla-connect query disconnect prepare))
 
 (displayln "Starting...")
 
@@ -9,23 +10,25 @@
 (define conn
   (scylla-connect #:server "localhost"
                   #:port 9042
-                  #:username "cassandra"  ; Note: changed from user to username
+                  #:username "cassandra"  
                   #:password "cassandra"))
 
 (displayln "Connected")
-
-; Try a query
 (displayln "Attempting query...")
+
+; Switch to keyspace
+(query conn "USE toldyou")
 (displayln "Switching to toldyou keyspace...")
-(query conn "use toldyou")
+
+; Prepare statement
+(displayln "Preparing statement...")
+(define stmt (prepare conn "SELECT * FROM users"))
+
+; Execute prepared statement
 (displayln "Querying users...")
-(define users (query conn "select * from users"))
+(define users (query conn stmt))
 (displayln "Users:")
-(for ([user users])
-  (printf "~a: ~a (~a)~n" 
-          (vector-ref user 6)  ; username
-          (vector-ref user 2)  ; email
-          (vector-ref user 0))) ; user_id
+(displayln users)
 
 ; Clean up
 (displayln "Disconnecting...")

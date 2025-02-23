@@ -13,7 +13,8 @@
 
 (provide scylla-connect
          query
-         disconnect)
+         disconnect
+         prepare)
 
 (struct response-header (version flags streamid opcode length))
 
@@ -22,6 +23,9 @@
 
 (define (disconnect connection)
   (send connection disconnect))
+
+(define (prepare connection query-text)
+  (send connection prepare 'prepare query-text))
 
 (define (raise-backend-error who msg)
   (match msg
@@ -132,7 +136,11 @@
              (let ([pst (statement-binding-pst stmt)])
                (send pst check-owner who this stmt)
                stmt)]
-            [(string? stmt) stmt]))
+            [(prepared-statement? stmt)
+             (send stmt check-owner who this stmt)
+             stmt]
+            [(string? stmt) stmt]
+            [else (error who "not a statement: ~e" stmt)]))
 
     (define/private (read-response)
       (define lwac (hash-ref recv-map 1 #f))
@@ -199,6 +207,9 @@
         (define streamid (new-streamid))
         (define lwac (add-recv-lwachan streamid))
         (match stmt
+          [(? prepared-statement? pst)
+           (send-message streamid
+                        (msg:Execute (send pst get-handle) consistency null))]
           [(struct statement-binding (pst params))
            (send-message streamid
                         (msg:Execute (send pst get-handle) consistency params))]
@@ -210,25 +221,41 @@
     (define/private (query1:collect who msg)
       (match msg
         [(msg:Result:Void _) (void)]
-        [(msg:Result:Rows metadata flags rows _) rows]
+        [(msg:Result:Rows _ pagestate info rows)
+         (define row-count (length rows))
+         (printf "rows-count: ~a~n" row-count)
+         rows]
         [(msg:Result:SetKeyspace _ keyspace) (void)]
-        [(msg:Result:Prepared _ id _ _)
+        [(msg:Result:Prepared _ id metadata result-metadata)
          (new prepared-statement%
-              [-owner this]
+              [owner this]
               [handle id]
               [close-on-exec? #t]
-              [param-typeids null]
-              [result-dvecs null])]
+              [param-typeids (map car metadata)]
+              [result-dvecs result-metadata])]
         [(msg:Error code msg)
          (error 'scylla-query "query error ~s: ~s" code msg)]))
 
     (define/override (query who stmt cursor?)
       (when cursor? (error who "cursors not supported yet"))
       (let ([lw (query1:send who stmt cursor?)])
-        (match (lwac-ref lw)
-          [(msg:Result:Rows _ pagestate metadata rows) rows]
-          [(msg:Result:SetKeyspace _ keyspace) (void)]
-          [other other])))
+        (define result (lwac-ref lw))
+        (query1:collect who result)))
+
+    (define/override (prepare who query-text)
+      (define streamid (new-streamid))
+      (define lwac (add-recv-lwachan streamid))
+      (send-message streamid (msg:Prepare query-text))
+      (match (lwac-ref lwac)
+        [(msg:Result:Prepared _ id _ _)
+         (new prepared-statement%
+              [owner this]
+              [handle id]
+              [close-on-exec? #t]
+              [param-typeids null]
+              [result-dvecs null])]
+        [(msg:Error code msg)
+         (error 'scylla-prepare "prepare error ~s: ~s" code msg)]))
 
     (define/private (lwac-ref lwac)
       (semaphore-wait (car lwac))
