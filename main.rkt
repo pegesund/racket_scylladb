@@ -41,9 +41,12 @@
    (displayln "Rows:")
    (displayln rows)])
 
+(time 
+    (for ([i (in-range 100000)])
+        (bind-params stmt conn (list "john.doe@example.com"))))
+
 ; Clean up
 (displayln "Disconnecting...")
 (disconnect conn)
 (displayln "Done")
-
 (displayln result)
