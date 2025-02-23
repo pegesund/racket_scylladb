@@ -223,7 +223,6 @@
         [(msg:Result:Void _) (void)]
         [(msg:Result:Rows _ pagestate info rows)
          (define row-count (length rows))
-         (printf "rows-count: ~a~n" row-count)
          rows]
         [(msg:Result:SetKeyspace _ keyspace) (void)]
         [(msg:Result:Prepared _ id metadata result-metadata)

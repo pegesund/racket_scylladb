@@ -30,6 +30,9 @@
 (displayln "Users:")
 (displayln users)
 
+
+(displayln (query conn "select email from users"))
+
 ; Clean up
 (displayln "Disconnecting...")
 (send conn disconnect)
