@@ -15,9 +15,12 @@
          query
          disconnect
          prepare
-         bind-params)
+         bind-params
+         query-result
+         (struct-out query-result))
 
 (struct response-header (version flags streamid opcode length))
+(struct query-result (metadata rows) #:transparent)
 
 (define (bind-params stmt conn params)
   (if conn
@@ -43,8 +46,8 @@
 (define scylla-connection%
   (class connection%
     (inherit call-with-lock
-            dprintf
-            disconnect)
+             dprintf
+             disconnect)
 
     (field [recv-thread-go (make-semaphore 0)]
            [next-streamid 1]
@@ -228,18 +231,12 @@
 
     (define/private (query1:collect who msg)
       (match msg
-        [(msg:Result:Void _) (void)]
         [(msg:Result:Rows _ pagestate info rows)
-         (define row-count (length rows))
-         rows]
-        [(msg:Result:SetKeyspace _ keyspace) (void)]
-        [(msg:Result:Prepared _ id metadata result-metadata)
-         (new prepared-statement%
-              [owner this]
-              [handle id]
-              [close-on-exec? #t]
-              [param-typeids (map (lambda (x) (vector-ref x 3)) metadata)]  ; Get the type from metadata vector
-              [result-dvecs result-metadata])]
+         (query-result info rows)]
+        [(msg:Result:Void _)
+         (query-result null null)]
+        [(msg:Result:SetKeyspace _ keyspace)
+         (query-result null null)]
         [(msg:Error code msg)
          (error 'scylla-query "query error ~s: ~s" code msg)]))
 
@@ -271,7 +268,8 @@
               [handle id]
               [close-on-exec? #t]
               [param-typeids (map (lambda (x) (vector-ref x 3)) metadata)]  ; Get the type from metadata vector
-              [result-dvecs result-metadata])]
+              [result-dvecs result-metadata]
+              [stmt query-text])]
         [(msg:Error code msg)
          (error 'scylla-prepare "prepare error ~s: ~s" code msg)]))
 
