@@ -2,7 +2,7 @@
 
 (require racket/match
          racket/format
-         (only-in "./scylla.rkt" scylla-connect query disconnect prepare))
+         (only-in "./scylla.rkt" scylla-connect query disconnect prepare bind-params))
 
 (displayln "Starting...")
 
@@ -20,14 +20,11 @@
 (query conn "USE toldyou")
 (displayln "Switching to toldyou keyspace...")
 
-; Prepare statement
+; Prepare and execute statement
 (displayln "Preparing statement...")
 (define stmt (prepare conn "SELECT email FROM users WHERE email = ? ALLOW FILTERING"))
-
-; Execute prepared statement
 (displayln "Querying users...")
-(define bound-stmt (send stmt bind 'query (list "john.doe@example.com")))
-(define users (query conn bound-stmt))
+(define users (bind-params stmt conn "john.doe@example.com"))
 (displayln "Users:")
 (displayln users)
 
@@ -37,5 +34,3 @@
 (displayln "Disconnecting...")
 (disconnect conn)
 (displayln "Done")
-
-

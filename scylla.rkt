@@ -14,9 +14,15 @@
 (provide scylla-connect
          query
          disconnect
-         prepare)
+         prepare
+         bind-params)
 
 (struct response-header (version flags streamid opcode length))
+
+(define (bind-params stmt conn . params)
+  (if conn
+      (query conn (send stmt bind 'query params))
+      (send stmt bind 'query params)))
 
 (define (query connection stmt . args)
   (if (null? args)
