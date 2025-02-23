@@ -12,12 +12,16 @@
          "scylla-message.rkt")
 
 (provide scylla-connect
-         query)
+         query
+         disconnect)
 
 (struct response-header (version flags streamid opcode length))
 
 (define (query connection stmt . args)
   (send connection query 'query stmt #f))
+
+(define (disconnect connection)
+  (send connection disconnect))
 
 (define (raise-backend-error who msg)
   (match msg
@@ -281,9 +285,10 @@
         (display "  ** done sending query") (newline)
         (display lw) (newline)
         (display "  ** waiting for response") (newline)
-        (define result (query1:collect who (lwac-ref lw)))
-        (display "  ** got response") (newline)
-        result))
+        (match (lwac-ref lw)
+          [(msg:Result:Rows _ pagestate metadata rows) rows]
+          [(msg:Result:SetKeyspace _ keyspace) (void)]
+          [other other])))
 
     (define/private (lwac-ref lwac)
       (display "waiting for semaphore ") (newline)

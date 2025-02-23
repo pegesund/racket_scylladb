@@ -1,6 +1,7 @@
 #lang racket
 
 (require "./scylla.rkt")  ; Use our new implementation
+(require racket/format)
 
 (displayln "Starting...")
 
@@ -15,9 +16,16 @@
 
 ; Try a query
 (displayln "Attempting query...")
-(display "Query result: ")
-(display (query conn "use toldyou"))
-(displayln (query conn"select * from users"))
+(displayln "Switching to toldyou keyspace...")
+(query conn "use toldyou")
+(displayln "Querying users...")
+(define users (query conn "select * from users"))
+(displayln "Users:")
+(for ([user users])
+  (printf "~a: ~a (~a)~n" 
+          (vector-ref user 6)  ; username
+          (vector-ref user 2)  ; email
+          (vector-ref user 0))) ; user_id
 
 ; Clean up
 (displayln "Disconnecting...")
