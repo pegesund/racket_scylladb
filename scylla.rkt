@@ -9,6 +9,7 @@
          db/private/generic/interfaces     
          db/private/generic/prepared      
          (prefix-in msg: db/private/cassandra/message)
+         openssl
          "scylla-message.rkt")
 
 (provide scylla-connect
@@ -280,8 +281,12 @@
 (define (scylla-connect #:server [server "localhost"]
                        #:port [port 9042]
                        #:username [username #f]
-                       #:password [password #f])
-  (define-values (in out) (tcp-connect server port))
+                       #:password [password #f]
+                       #:ssl [ssl 'no])
+  (define-values (in out) 
+    (if (eq? ssl 'no)
+        (tcp-connect server port)
+        (ssl-connect server port 'tls12)))
   (define c (new scylla-connection% 
                  [inport in]
                  [outport out]))
