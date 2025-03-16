@@ -9,3 +9,10 @@ I have probably not followed all protocols, but how to use it is shown in the ma
 It is also fast and stable, over 20000 reads pr second on my machine, no memory leaks found while running for a while
 
 As I build upon standard library you would need to install this before usage
+
+Usage:
+
+Install scylla library and then:
+
+(require scylla/scylla)
+

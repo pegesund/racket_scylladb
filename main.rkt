@@ -4,7 +4,7 @@
          racket/format
          (only-in "./scylla.rkt" scylla-connect query disconnect prepare query-params query-result))
 
-(define testme
+(define (testme)
   (displayln "Starting...")
 
   ; Create connection using our new implementation
